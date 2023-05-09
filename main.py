@@ -10,7 +10,7 @@ import easyocr
 def extract_numberplate(image):
     reader = easyocr.Reader(['en'])
     try:
-        output = reader.readtext('/project/plates1/'+image)
+        output = reader.readtext('/project/plates/'+image)
         numberplate=output[0][1]
         print(numberplate)
         return numberplate
@@ -112,7 +112,7 @@ def cam_test():
                 cv2.imshow("ROI", img_roi)
                 if count<8:
                     if img_roi.all != 0:
-                        cv2.imwrite("plates1/img" + str(count) + ".png", img_roi)
+                        cv2.imwrite("plates/img" + str(count) + ".png", img_roi)
                         count+=1
                         print(count)
                         img_roi = None
