@@ -1,12 +1,14 @@
-#from playsound import playSound
+import playsound
 import cv2
-import time
-#from api import generate_sound
+import uuid
+import requests
+import json
+import easyocr
+import pandas as pd
 
 def start_again():
     cam_test()
 
-import easyocr
 def extract_numberplate(image):
     reader = easyocr.Reader(['en'])
     try:
@@ -22,7 +24,6 @@ def extract_numberplate(image):
     
 
 def excel_sheet(numberplate):
-    import pandas as pd
     sheet_id = '1MkVBQYNqql8Ui7YScYl3IXQeRlHzaX1f9Z5CERndSME'
     df = pd.read_csv(f'https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv')
 
@@ -30,22 +31,16 @@ def excel_sheet(numberplate):
         row = df[df['Number Plate'] == numberplate]
         bus_name = row.iloc[0, 1]
         place = row.iloc[0, 2]
-        print(bus_name)
-        print(place)
+        if bus_name == "Kee yeS aaR Tee see":
+            print('\n\n\nBus Name: KSRTC')
+        print('Destination: '+place)
         return bus_name,place
     else:
-        # print(numberplate)
-        #PlaySound('prefix.mp3')
         print("The Number Plate is not registered ")
         return 0
-
-
+    
 
 def generate_sound(place,bus_name):
-    import requests
-    import json
-    from playsound import playsound
-    import time
 
     url = 'http://3.111.82.58:8080/text'
     str= place+' bhaagatthekulla '+bus_name+' basu sttaandil etthi chernnirikkunnu'
@@ -63,28 +58,28 @@ def generate_sound(place,bus_name):
         print("POST didnt worked")
 
     audio_file = requests.get(audio_url)
+    file_name=uuid.uuid4().hex
     if response.status_code == 200:
         audio_content = audio_file.content
-        with open('audio.wav', 'wb') as f:
+        with open(file_name+'.wav', 'wb') as f:
             f.write(audio_content)
-
-        print('File saved successfully.')
+            print('File name: '+file_name+'.wav')
     else:
         print('Error: Failed to download file.')
-    time.sleep(5)
-    playsound('prefix.mp3')
-    time.sleep(2)
-    playsound('audio.wav')
+    playsound.playsound('prefix.mp3')
+    try:
+        playsound.playsound(file_name+'.wav')
+    except playsound.PlaysoundException as e:
+        print(e)
+    
     return 1
 
 
 def cam_test():
     harcascade = "model/haarcascade_russian_plate_number.xml"
-    link= 'http://192.168.137.134:1100/video'
-    cap = cv2.VideoCapture(link)
+    # link= 'http://192.168.137.134:1100/video'
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
-    # cap.set(3, 640) # widthq
-    # cap.set(4, 480) #heightq
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 270)
     min_area = 500
@@ -109,25 +104,28 @@ def cam_test():
                 cv2.putText(img, "Number Plate", (x,y-5), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255, 0, 255), 2)
 
                 img_roi = img[y: y+h, x:x+w]
-                cv2.imshow("ROI", img_roi)
-                if count<8:
+                cv2.imshow("Number Plates", img_roi)
+                if count<20:
                     if img_roi.all != 0:
                         cv2.imwrite("plates/img" + str(count) + ".png", img_roi)
                         count+=1
-                        print(count)
+                        # print(count)
                         img_roi = None
 
         if destroy:
             cv2.imshow("Result", img)
-        if count ==8:
+        if count ==20:
             cv2.destroyAllWindows()
             destroy=0
-
-        if cv2.waitKey(1) & 0xFF == ord('q') | count==8:
+        if cv2.waitKey(1) & 0xFF == ord('c'):
+                cv2.destroyAllWindows()
+                print("\nProgram Terminated Succesfully...\n")
+                exit()
+        if count==20:
                 cv2.destroyAllWindows()
                 destroy=0
-                print("Video Window is Closed")
-        i=7
+                print("\n20 Images are Captured: ✔\n")
+        i=19
         while not destroy:
             if i> 0:
                 number_plate=extract_numberplate('img'+str(i)+'.png')
@@ -135,12 +133,14 @@ def cam_test():
                 if(bus_info!=0):
                     sound = generate_sound(bus_info[1],bus_info[0])
                 i-=1
-                if(sound == 1):
-                    print('a sound is generated')
-                    # completed = 1
-                    time.sleep(5)
+                if(i==0):
                     start_again()
-                    exit(0)
+
+                if(sound == 1):
+                    print('Audio Played: ✔')
+                    completed = 1
+                    start_again()
+                    
 if __name__ == '__main__':
     cam_test()                
         
